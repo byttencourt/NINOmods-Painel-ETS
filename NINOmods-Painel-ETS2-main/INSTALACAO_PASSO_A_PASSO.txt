@@ -6,6 +6,20 @@
 Este guia foca em fazer o painel funcionar na porta 8081 acessível externamente.
 
 --------------------------------------------------------------------------------
+0. OBTENDO OS ARQUIVOS NO DEBIAN
+--------------------------------------------------------------------------------
+Se você ainda não tem os arquivos no seu servidor Debian, siga estes passos:
+
+1. Atualize o sistema e instale o Git:
+   apt update && apt install git -y
+
+2. Clone o repositório oficial:
+   git clone https://github.com/byttencourt/NINOmods-Painel-ETS.git
+
+3. Entre na pasta do projeto:
+   cd NINOmods-Painel-ETS
+
+--------------------------------------------------------------------------------
 1. PREPARAÇÃO DO "INDEX" (FRONTEND)
 --------------------------------------------------------------------------------
 No seu computador (VS Code), você precisa gerar a pasta 'dist' que contém o site:

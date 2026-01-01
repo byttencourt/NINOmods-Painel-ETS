@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { LayoutDashboard, Settings, Terminal, Clock, LogOut, UsersRound, UserX, ExternalLink } from 'lucide-react';
+import { LayoutDashboard, Settings, Terminal, Clock, LogOut, UserX, ExternalLink } from 'lucide-react';
 import { UserRole } from '../types';
 
 interface SidebarProps {
@@ -18,10 +18,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, us
     { id: 'logs', label: 'Logs do Console', icon: Terminal },
     { id: 'automation', label: 'Automação', icon: Clock },
   ];
-
-  if (userRole === 'SUPERADMIN') {
-    menuItems.push({ id: 'users', label: 'Gestão de Admins', icon: UsersRound });
-  }
 
   return (
     <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0">

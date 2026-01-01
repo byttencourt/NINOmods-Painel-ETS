@@ -1,0 +1,6 @@
+
+[
+    { "username": "byttencourt", "password": "Nico1503", "role": "SUPERADMIN" },
+    { "username": "Christian", "password": "ati13", "role": "SUPERADMIN" },
+    { "username": "Leandro", "password": "Frater2026", "role": "ADMIN" }
+]

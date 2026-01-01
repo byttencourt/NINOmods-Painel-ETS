@@ -8,6 +8,7 @@ export interface UserSession {
   token: string;
 }
 
+// Added ManagedUser interface to resolve export error in AdminManagement.tsx
 export interface ManagedUser {
   id: string;
   username: string;
@@ -18,6 +19,16 @@ export interface ManagedUser {
     canEditConfig: boolean;
     canManageUsers: boolean;
   };
+}
+
+export interface ServerStats {
+  cpuUsage: string;
+  ramUsage: string;
+  ramTotal: string;
+  uptime: string;
+  playersOnline: number;
+  playersMax: number;
+  history: { time: string; players: number }[];
 }
 
 export interface BannedUser {

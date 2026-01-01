@@ -15,6 +15,9 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, setConfig, readOnly }
   const [isSaving, setIsSaving] = useState(false);
   const [showToken, setShowToken] = useState(false);
 
+  // Garantir que moderator_list sempre seja um array
+  const moderatorList = config.moderator_list || [];
+
   const handleToggle = (key: keyof ServerConfig) => {
     if (readOnly) return;
     setConfig(prev => ({ ...prev, [key]: !prev[key] }));
@@ -42,20 +45,20 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, setConfig, readOnly }
     if (readOnly) return;
     setConfig(prev => ({
       ...prev,
-      moderator_list: [...prev.moderator_list, '']
+      moderator_list: [...moderatorList, '']
     }));
   };
 
   const updateModerator = (index: number, value: string) => {
     if (readOnly) return;
-    const newList = [...config.moderator_list];
+    const newList = [...moderatorList];
     newList[index] = value;
     setConfig(prev => ({ ...prev, moderator_list: newList }));
   };
 
   const removeModerator = (index: number) => {
     if (readOnly) return;
-    const newList = config.moderator_list.filter((_, i) => i !== index);
+    const newList = moderatorList.filter((_, i) => i !== index);
     setConfig(prev => ({ ...prev, moderator_list: newList }));
   };
 
@@ -159,11 +162,6 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, setConfig, readOnly }
                     {showToken ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
-                <p className="mt-2 text-[10px] text-slate-500">Este token foi extraído do seu arquivo SII. Ele permite que seu servidor apareça na lista da Steam.</p>
-              </div>
-              <div className="grid grid-cols-2 gap-6">
-                <ConfigInput label="Porta Dedicada" value={config.connection_dedicated_port} readOnly={true} />
-                <ConfigInput label="Porta de Query" value={config.query_dedicated_port} readOnly={true} />
               </div>
             </div>
           )}
@@ -184,7 +182,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, setConfig, readOnly }
                 )}
               </div>
               <div className="space-y-3">
-                {config.moderator_list.map((id, index) => (
+                {moderatorList.map((id, index) => (
                   <div key={index} className="flex gap-2 group">
                     <div className="flex-1">
                       <ConfigInput 
@@ -204,6 +202,9 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, setConfig, readOnly }
                     )}
                   </div>
                 ))}
+                {moderatorList.length === 0 && (
+                  <p className="text-center py-10 text-slate-500 text-sm italic">Nenhum moderador listado no arquivo SII.</p>
+                )}
               </div>
             </div>
           )}

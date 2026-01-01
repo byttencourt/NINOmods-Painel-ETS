@@ -1,37 +1,32 @@
 
-import { ServerConfig } from '../types';
+import { ServerConfig, ServerStats, ServerStatus, BannedUser, ConnectedPlayer } from '../types';
 
-/**
- * Detecta o endereço da API dinamicamente.
- * Em produção (Debian + Nginx), usamos caminhos relativos para evitar erros de CORS 
- * e problemas com portas bloqueadas no Mikrotik.
- */
 const getBaseUrl = () => {
   const { hostname, protocol, port } = window.location;
-  
-  // Se estivermos em desenvolvimento local
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
     return `http://${hostname}:3000/api`;
   }
-  
-  // Em produção, o Nginx vai escutar na mesma porta do frontend (ex: 8081)
-  // e repassar o prefixo /api/ para o backend na porta 3000.
   return `${protocol}//${hostname}${port ? `:${port}` : ''}/api`;
 };
 
 export const BACKEND_URL = getBaseUrl();
 
 export const parseSiiConfig = (siiContent: string): Partial<ServerConfig> => {
-  if (!siiContent) return {};
-  const config: any = {};
+  if (!siiContent) return { moderator_list: [] };
+  const config: any = { moderator_list: [] };
   const lines = siiContent.split('\n');
   
   lines.forEach(line => {
+    const modMatch = line.match(/^\s*moderator_list\[\d+\]\s*:\s*(.*)$/);
+    if (modMatch) {
+      config.moderator_list.push(modMatch[1].trim());
+      return;
+    }
     const match = line.match(/^\s*(\w+)\s*:\s*(.*)$/);
     if (match) {
       let [_, key, value] = match;
+      if (key === 'moderator_list') return;
       value = value.trim().split('#')[0].trim().replace(/^"(.*)"$/, '$1'); 
-      
       if (value === 'true') config[key] = true;
       else if (value === 'false') config[key] = false;
       else if (!isNaN(Number(value)) && value !== '' && !value.includes('.')) config[key] = parseInt(value);
@@ -39,7 +34,6 @@ export const parseSiiConfig = (siiContent: string): Partial<ServerConfig> => {
       else config[key] = value;
     }
   });
-  
   return config;
 };
 
@@ -59,46 +53,60 @@ export const stringifySiiConfig = (config: ServerConfig): string => {
 };
 
 export const api = {
-  async fetchConfig(): Promise<Partial<ServerConfig>> {
-    const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), 3000);
-
+  async fetchStatus(): Promise<ServerStatus> {
     try {
-      const response = await fetch(`${BACKEND_URL}/config`, { signal: controller.signal });
-      clearTimeout(id);
-      if (!response.ok) throw new Error("Status API inválido");
+      const response = await fetch(`${BACKEND_URL}/server/status`);
       const data = await response.json();
-      return parseSiiConfig(data.content);
-    } catch (error) {
-      console.error(`[API] Erro ao buscar configuração em ${BACKEND_URL}:`, error);
-      throw error;
-    }
+      return data.active ? ServerStatus.ONLINE : ServerStatus.OFFLINE;
+    } catch { return ServerStatus.OFFLINE; }
   },
 
-  async saveConfig(config: ServerConfig): Promise<boolean> {
-    const siiText = stringifySiiConfig(config);
+  async fetchPlayers(): Promise<ConnectedPlayer[]> {
     try {
-      const response = await fetch(`${BACKEND_URL}/config`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: siiText })
-      });
-      return response.ok;
-    } catch (error) {
-      return false;
-    }
+      const response = await fetch(`${BACKEND_URL}/server/players`);
+      const data = await response.json();
+      return data.players || [];
+    } catch { return []; }
   },
 
-  async sendServerAction(action: 'start' | 'stop' | 'restart'): Promise<boolean> {
-    try {
-      const response = await fetch(`${BACKEND_URL}/server/action`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action })
-      });
-      return response.ok;
-    } catch (error) {
-      return false;
-    }
+  async fetchConfig(): Promise<Partial<ServerConfig>> {
+    const response = await fetch(`${BACKEND_URL}/config`);
+    const data = await response.json();
+    return parseSiiConfig(data.content);
+  },
+
+  async fetchStats(): Promise<ServerStats> {
+    const response = await fetch(`${BACKEND_URL}/server/stats`);
+    return await response.json();
+  },
+
+  async fetchBans(): Promise<BannedUser[]> {
+    const response = await fetch(`${BACKEND_URL}/bans`);
+    const data = await response.json();
+    return data.bans || [];
+  },
+
+  async saveBans(bans: BannedUser[]): Promise<void> {
+    await fetch(`${BACKEND_URL}/bans`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bans })
+    });
+  },
+
+  async saveConfig(config: ServerConfig): Promise<void> {
+    await fetch(`${BACKEND_URL}/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: stringifySiiConfig(config) })
+    });
+  },
+
+  async sendServerAction(action: 'start' | 'stop' | 'restart'): Promise<void> {
+    await fetch(`${BACKEND_URL}/server/action`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action })
+    });
   }
 };

@@ -1,20 +1,19 @@
 
 import React, { useState, useEffect } from 'react';
-import { Play, Square, RotateCcw, CloudCheck, CloudOff,Globe } from 'lucide-react';
+import { Play, Square, RotateCcw, CloudCheck, CloudOff, Globe } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import ConfigPanel from './components/ConfigPanel';
 import LogConsole from './components/LogConsole';
 import AutomationPanel from './components/AutomationPanel';
-import AdminManagement from './components/AdminManagement';
 import BanningPanel from './components/BanningPanel';
 import Sidebar from './components/Sidebar';
 import Login from './components/Login';
 import { auth } from './lib/auth';
 import { api } from './lib/api';
-import { ServerStatus, ServerConfig, AutomationSettings, UserSession } from './types';
+import { ServerStatus, ServerConfig, AutomationSettings, UserSession, ServerStats } from './types';
 
 const INITIAL_CONFIG: ServerConfig = {
-  lobby_name: "Carregando...",
+  lobby_name: "Sincronizando...",
   description: "",
   welcome_message: "",
   password: "",
@@ -42,48 +41,66 @@ const INITIAL_CONFIG: ServerConfig = {
   moderator_list: []
 };
 
-const INITIAL_AUTOMATION: AutomationSettings = {
-  autoStartOnBoot: true,
-  dailyRestart: true,
-  restartHour: "04:00"
+const INITIAL_STATS: ServerStats = {
+  cpuUsage: "0%",
+  ramUsage: "0",
+  ramTotal: "0",
+  uptime: "...",
+  playersOnline: 0,
+  playersMax: 128,
+  history: []
 };
 
 const App: React.FC = () => {
   const [session, setSession] = useState<UserSession | null>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'config' | 'logs' | 'automation' | 'users' | 'bans'>('dashboard');
-  const [status, setStatus] = useState<ServerStatus>(ServerStatus.ONLINE);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'config' | 'logs' | 'automation' | 'bans'>('dashboard');
+  const [status, setStatus] = useState<ServerStatus>(ServerStatus.OFFLINE);
   const [config, setConfig] = useState<ServerConfig>(INITIAL_CONFIG);
-  const [automation, setAutomation] = useState<AutomationSettings>(INITIAL_AUTOMATION);
-  const [logs, setLogs] = useState<string[]>(["[SYSTEM] Painel NINOmods iniciado. Aguardando conexão com backend..."]);
+  const [stats, setStats] = useState<ServerStats>(INITIAL_STATS);
+  const [logs, setLogs] = useState<string[]>(["[SYSTEM] Painel NINOmods iniciado."]);
 
   useEffect(() => {
     const init = async () => {
       const currentSession = auth.getSession();
       setSession(currentSession);
-      
-      // Delay artificial para garantir que o usuário veja o host detectado em caso de erro
-      setTimeout(() => {
-        setLoadingAuth(false);
-        if (currentSession) {
-          loadRealConfig().catch(() => {});
-        }
-      }, 800);
+      setTimeout(() => setLoadingAuth(false), 800);
+      if (currentSession) loadRealData();
     };
     init();
   }, []);
 
-  const loadRealConfig = async () => {
+  useEffect(() => {
+    if (!session) return;
+    const interval = setInterval(() => refreshStats(), 10000);
+    return () => clearInterval(interval);
+  }, [session]);
+
+  const loadRealData = async () => {
     setIsSyncing(true);
     try {
       const realData = await api.fetchConfig();
       setConfig(prev => ({ ...prev, ...realData }));
+      await refreshStats();
       addLog(`Sucesso: Conectado ao host ${window.location.hostname}`);
-    } catch (err) {
-      addLog(`Aviso: Backend (Porta 3000) inacessível em ${window.location.hostname}`);
+    } catch (err: any) {
+      addLog(`Aviso de Sincronia: ${err.message}`);
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  const refreshStats = async () => {
+    try {
+      const [realStats, realStatus] = await Promise.all([
+        api.fetchStats(),
+        api.fetchStatus()
+      ]);
+      setStats(realStats);
+      setStatus(realStatus);
+    } catch (e) {
+      console.warn("Stats offline.");
     }
   };
 
@@ -94,23 +111,22 @@ const App: React.FC = () => {
 
   const handleAction = async (action: 'start' | 'stop' | 'restart') => {
     if (session?.role !== 'SUPERADMIN' && action === 'stop') {
-      alert('Acesso negado.');
+      alert('Apenas Superadmins podem desligar o servidor.');
       return;
     }
     
     const prevStatus = status;
     setStatus(action === 'stop' ? ServerStatus.STOPPING : ServerStatus.STARTING);
-    addLog(`Comando: ${action.toUpperCase()} enviado...`);
+    addLog(`Comando: ${action.toUpperCase()} enviado ao Debian...`);
     
-    const success = await api.sendServerAction(action);
-    
-    if (success) {
-      addLog(`Sucesso: Operação ${action} concluída.`);
-      setTimeout(() => {
-        setStatus(action === 'stop' ? ServerStatus.OFFLINE : ServerStatus.ONLINE);
-      }, 1000);
-    } else {
-      addLog(`Erro: O backend não respondeu ao comando.`);
+    try {
+      await api.sendServerAction(action);
+      addLog(`Sucesso: Operação ${action} confirmada pelo sistema.`);
+      setTimeout(refreshStats, 3000);
+    } catch (err: any) {
+      const msg = err.message || "Erro desconhecido";
+      addLog(`ERRO: ${msg}`);
+      alert(`Falha no Servidor:\n${msg}`);
       setStatus(prevStatus);
     }
   };
@@ -121,26 +137,13 @@ const App: React.FC = () => {
   };
 
   if (loadingAuth) return (
-    <div className="h-screen bg-slate-950 flex flex-col items-center justify-center gap-6">
-      <div className="relative">
-        <div className="w-16 h-16 border-4 border-blue-600/20 rounded-full"></div>
-        <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
-      </div>
-      <div className="text-center">
-        <p className="text-slate-400 font-mono text-xs animate-pulse tracking-widest uppercase mb-2">Iniciando Engine NINOmods...</p>
-        <div className="flex items-center gap-2 px-3 py-1 bg-slate-900 border border-slate-800 rounded-full text-[10px] text-slate-500 font-mono">
-          <Globe size={10} />
-          {window.location.hostname}:{window.location.port}
-        </div>
-      </div>
+    <div className="h-screen bg-slate-950 flex flex-col items-center justify-center gap-6 text-slate-400 font-mono">
+      <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      <p className="animate-pulse">Sincronizando Sessão...</p>
     </div>
   );
 
-  if (!session) return <Login onLogin={() => {
-    const s = auth.getSession();
-    setSession(s);
-    loadRealConfig();
-  }} />;
+  if (!session) return <Login onLogin={() => { setSession(auth.getSession()); loadRealData(); }} />;
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-950 text-slate-200">
@@ -155,24 +158,17 @@ const App: React.FC = () => {
               <div className="flex items-center gap-2 mt-0.5">
                 <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Debian 13</p>
                 <div className="w-1 h-1 rounded-full bg-slate-700"></div>
-                {isSyncing ? (
-                   <span className="text-[9px] text-blue-400 flex items-center gap-1">
-                     <div className="w-2 h-2 border border-blue-400 border-t-transparent rounded-full animate-spin"></div>
-                     Sincronizando...
-                   </span>
-                ) : (
-                  <span className="text-[9px] text-green-500 flex items-center gap-1 font-bold">
-                    <CloudCheck size={10} />
-                    SINC. SERVER_CONFIG.SII
-                  </span>
-                )}
+                <span className={`text-[9px] flex items-center gap-1 font-bold ${isSyncing ? 'text-blue-400' : 'text-green-500'}`}>
+                   {isSyncing ? <div className="w-2 h-2 border border-blue-400 border-t-transparent rounded-full animate-spin"></div> : <CloudCheck size={10} />}
+                   {isSyncing ? 'Sincronizando...' : 'SII Sincronizado'}
+                </span>
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-lg border border-slate-700">
-              <div className={`w-2 h-2 rounded-full ${status === ServerStatus.ONLINE ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'bg-red-500'}`} />
+              <div className={`w-2 h-2 rounded-full ${status === ServerStatus.ONLINE ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.3)]'}`} />
               <span className="text-sm font-medium uppercase">{status}</span>
             </div>
 
@@ -185,12 +181,11 @@ const App: React.FC = () => {
         </header>
 
         <div className="p-8">
-          {activeTab === 'dashboard' && <Dashboard status={status} logs={logs} />}
+          {activeTab === 'dashboard' && <Dashboard status={status} stats={stats} logs={logs} />}
           {activeTab === 'config' && <ConfigPanel config={config} setConfig={setConfig} readOnly={session.role !== 'SUPERADMIN'} />}
           {activeTab === 'bans' && <BanningPanel userRole={session.role} onLogAction={addLog} />}
           {activeTab === 'logs' && <LogConsole logs={logs} />}
-          {activeTab === 'automation' && <AutomationPanel automation={automation} setAutomation={setAutomation} readOnly={session.role !== 'SUPERADMIN'} />}
-          {activeTab === 'users' && session.role === 'SUPERADMIN' && <AdminManagement />}
+          {activeTab === 'automation' && <AutomationPanel automation={{autoStartOnBoot: true, dailyRestart: true, restartHour: "04:00"}} setAutomation={() => {}} readOnly={session.role !== 'SUPERADMIN'} />}
         </div>
       </main>
     </div>

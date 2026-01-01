@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Clock, RefreshCw, Zap, ShieldAlert, CheckCircle2, Lock } from 'lucide-react';
 import { AutomationSettings } from '../types';

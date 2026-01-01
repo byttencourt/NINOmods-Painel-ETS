@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { ShieldCheck, UserPlus, ShieldAlert, MoreVertical, Trash2, Lock, Unlock } from 'lucide-react';
 import { ManagedUser } from '../types';
@@ -129,7 +130,7 @@ const PermissionBadge: React.FC<{ active: boolean, label: string, onClick: () =>
       active 
         ? 'bg-green-500/10 border-green-500/30 text-green-500' 
         : 'bg-slate-800 border-slate-700 text-slate-500'
-    } ${disabled ? 'cursor-not-allowed opacity-80' : 'hover:scale-105 active:scale-95'}`}
+    } ${disabled ? 'cursor-default opacity-80' : 'hover:scale-105 active:scale-95'}`}
   >
     {label}
   </button>

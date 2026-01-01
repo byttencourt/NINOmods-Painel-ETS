@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { Play, Square, RotateCcw, CloudCheck, Globe } from 'lucide-react';
+import { Play, Square, RotateCcw, CloudCheck, CloudOff,Globe } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import ConfigPanel from './components/ConfigPanel';
 import LogConsole from './components/LogConsole';
@@ -62,6 +63,7 @@ const App: React.FC = () => {
       const currentSession = auth.getSession();
       setSession(currentSession);
       
+      // Delay artificial para garantir que o usuário veja o host detectado em caso de erro
       setTimeout(() => {
         setLoadingAuth(false);
         if (currentSession) {

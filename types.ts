@@ -8,7 +8,6 @@ export interface UserSession {
   token: string;
 }
 
-// Added ManagedUser interface to resolve export error in AdminManagement.tsx
 export interface ManagedUser {
   id: string;
   username: string;
@@ -42,9 +41,9 @@ export interface BannedUser {
 export interface ConnectedPlayer {
   steamId: string;
   username: string;
-  ping: number;
-  connectedSince: string;
-  country: string;
+  clientId: string;
+  connectedAt: string;
+  isAuthenticated?: boolean;
 }
 
 export interface ServerConfig {
@@ -74,6 +73,7 @@ export interface ServerConfig {
   friends_only: boolean;
   show_server: boolean;
   moderator_list: string[];
+  g_developer?: boolean; // Novo campo para modo developer
 }
 
 export enum ServerStatus {

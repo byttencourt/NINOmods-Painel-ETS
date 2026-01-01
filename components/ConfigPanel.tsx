@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Save, Shield, Globe, Monitor, Cpu, Lock, Trash2, Plus, Eye, EyeOff } from 'lucide-react';
+import { Save, Shield, Globe, Monitor, Cpu, Lock, Trash2, Plus, Eye, EyeOff, Terminal } from 'lucide-react';
 import { ServerConfig } from '../types';
 import { api } from '../lib/api';
 
@@ -15,7 +15,6 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, setConfig, readOnly }
   const [isSaving, setIsSaving] = useState(false);
   const [showToken, setShowToken] = useState(false);
 
-  // Garantir que moderator_list sempre seja um array
   const moderatorList = config.moderator_list || [];
 
   const handleToggle = (key: keyof ServerConfig) => {
@@ -64,7 +63,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, setConfig, readOnly }
 
   const sections = [
     { id: 'general', label: 'Geral', icon: Monitor },
-    { id: 'gameplay', label: 'Jogabilidade', icon: Cpu },
+    { id: 'gameplay', label: 'Simulação', icon: Cpu },
     { id: 'network', label: 'Rede / GSLT', icon: Globe },
     { id: 'moderators', label: 'Moderadores', icon: Shield },
   ];
@@ -131,6 +130,25 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, setConfig, readOnly }
               <h3 className="text-lg font-bold text-white mb-6 border-b border-slate-800 pb-4 flex items-center gap-2">
                 <Cpu size={20} className="text-purple-500" /> Regras de Simulação
               </h3>
+              
+              {/* MODO DEVELOPER ALERT */}
+              <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl mb-6 flex items-start gap-4">
+                <Terminal className="text-amber-500 shrink-0 mt-1" size={20} />
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-bold text-amber-500">Modo Developer (Log Detalhado)</span>
+                    <button 
+                      onClick={() => handleToggle('g_developer')}
+                      disabled={readOnly}
+                      className={`relative inline-flex h-5 w-10 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ${config.g_developer ? 'bg-amber-500' : 'bg-slate-700'}`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition duration-200 ${config.g_developer ? 'translate-x-5' : 'translate-x-0'}`} />
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-slate-400">Ative para expor o SteamID64 de quem conectar no arquivo de log. Essencial para moderação rápida.</p>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <ToggleSwitch label="Dano entre Jogadores" active={config.player_damage} onToggle={() => handleToggle('player_damage')} readOnly={readOnly} />
                 <ToggleSwitch label="Tráfego de IA" active={config.traffic} onToggle={() => handleToggle('traffic')} readOnly={readOnly} />

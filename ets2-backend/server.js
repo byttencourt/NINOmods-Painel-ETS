@@ -43,7 +43,7 @@ app.post('/api/login', (req, res) => {
     } catch (e) { res.status(500).send(); }
 });
 
-// LISTA DE JOGADORES - FORMATO REAL DO LOG DO USUÁRIO
+// LISTA DE JOGADORES - MOTOR DE BUSCA AVANÇADO (MODO DEVELOPER)
 app.get('/api/server/players', (req, res) => {
     if (!fs.existsSync(LOG_PATH)) return res.json({ players: [] });
     
@@ -51,21 +51,40 @@ app.get('/api/server/players', (req, res) => {
         const logContent = fs.readFileSync(LOG_PATH, 'utf8');
         const lines = logContent.split('\n');
         const playersMap = new Map();
+        
+        // Mapa auxiliar para vincular nomes/IDs detectados em linhas diferentes (Modo Developer)
+        const identityMap = new Map();
 
         lines.forEach(line => {
-            // Detecta entrada: [MP] NOME connected, client_id = X
+            // 1. Captura Autenticação Steam (Disponível em modo g_developer)
+            // Ex: [Steam] Authenticating user 'Nino' (76561198099299481)
+            const steamMatch = line.match(/\[Steam\] Authenticating user '(.*)' \((\d{17})\)/);
+            if (steamMatch) {
+                const name = steamMatch[1].trim();
+                const steamId = steamMatch[2];
+                identityMap.set(name, steamId);
+            }
+
+            // 2. Captura Conexão ao Lobby
+            // Ex: [MP] Nino connected, client_id = 4
             const joinMatch = line.match(/\[MP\] (.*) connected, client_id = (\d+)/);
             if (joinMatch) {
                 const name = joinMatch[1].trim();
                 const cid = joinMatch[2];
+                
+                // Tenta resolver o SteamID pelo nome capturado anteriormente
+                const resolvedId = identityMap.get(name) || "Desconhecido";
+                
                 playersMap.set(cid, { 
                     username: name, 
-                    steamId: "Desconhecido", // O log não fornece o SteamID nesta linha
+                    steamId: resolvedId,
                     clientId: cid,
-                    connectedAt: line.substring(0, 8)
+                    connectedAt: line.substring(0, 8),
+                    isAuthenticated: resolvedId !== "Desconhecido"
                 });
             }
-            // Detecta saída: [MP] NOME disconnected, client_id = X
+
+            // 3. Captura Desconexão
             const leaveMatch = line.match(/\[MP\] (.*) disconnected, client_id = (\d+)/);
             if (leaveMatch) {
                 playersMap.delete(leaveMatch[2]);

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ShieldBan, Trash2, Search, Info, AlertCircle, Loader2, UserPlus, Radio, ExternalLink, HelpCircle, X, Copy, Check, UserSearch, Fingerprint } from 'lucide-react';
+import { ShieldBan, Trash2, Search, Info, AlertCircle, Loader2, UserPlus, Radio, ExternalLink, HelpCircle, X, Copy, Check, UserSearch, Fingerprint, ShieldCheck } from 'lucide-react';
 import { ConnectedPlayer, BannedUser, UserRole } from '../types';
 import { api } from '../lib/api';
 
@@ -10,13 +10,13 @@ interface BanningPanelProps {
 }
 
 const BanningPanel: React.FC<BanningPanelProps> = ({ userRole, onLogAction }) => {
-  const [onlinePlayers, setOnlinePlayers] = useState<any[]>([]);
+  const [onlinePlayers, setOnlinePlayers] = useState<ConnectedPlayer[]>([]);
   const [bans, setBans] = useState<BannedUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedPlayer, setSelectedPlayer] = useState<{username: string, clientId: string} | null>(null);
+  const [selectedPlayer, setSelectedPlayer] = useState<ConnectedPlayer | null>(null);
   const [inputSteamId, setInputSteamId] = useState("");
   const [inputReason, setInputReason] = useState("Violação das regras do servidor");
   const [copied, setCopied] = useState(false);
@@ -41,16 +41,15 @@ const BanningPanel: React.FC<BanningPanelProps> = ({ userRole, onLogAction }) =>
     setOnlinePlayers(players);
   };
 
-  const openBanModal = (player: any) => {
+  const openBanModal = (player: ConnectedPlayer) => {
     setSelectedPlayer(player);
-    setInputSteamId("");
+    setInputSteamId(player.steamId && player.steamId !== "Desconhecido" ? player.steamId : "");
     setIsModalOpen(true);
     navigator.clipboard.writeText(player.username);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Tira Tags de Clan como [G.D.F] ou G.D.F® para melhorar a busca
   const getCleanName = (name: string) => {
     return name.replace(/\[.*?\]/g, '').replace(/[\u00AE\u2122]/g, '').trim();
   };
@@ -118,41 +117,54 @@ const BanningPanel: React.FC<BanningPanelProps> = ({ userRole, onLogAction }) =>
                 </button>
               </div>
 
-              {/* FERRAMENTAS DE BUSCA */}
-              <div className="space-y-3">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                  <UserSearch size={14} /> 1. Encontre o perfil pelo nome de exibição:
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <a 
-                    href={`https://steamcommunity.com/search/users/#text=${encodeURIComponent(selectedPlayer.username)}`} 
-                    target="_blank" 
-                    className="flex items-center justify-between px-4 py-3 bg-[#171a21] hover:bg-[#2a475e] text-white rounded-xl border border-white/5 transition-all group"
-                  >
-                    <div className="flex flex-col">
-                      <span className="text-xs font-bold">Busca na Steam</span>
-                      <span className="text-[9px] text-slate-400">Página de Usuários</span>
-                    </div>
-                    <ExternalLink size={14} className="group-hover:translate-x-1 transition-transform" />
-                  </a>
-                  <a 
-                    href={`https://steamid.io/lookup`} 
-                    target="_blank" 
-                    className="flex items-center justify-between px-4 py-3 bg-[#1e293b] hover:bg-[#334155] text-white rounded-xl border border-white/5 transition-all group"
-                  >
-                    <div className="flex flex-col">
-                      <span className="text-xs font-bold">STEAMID I/O</span>
-                      <span className="text-[9px] text-slate-400">Busca por url steam</span>
-                    </div>
-                    <ExternalLink size={14} className="group-hover:translate-x-1 transition-transform" />
-                  </a>
+              {/* ID AUTO-DETECTADO (DISPLAY) */}
+              {selectedPlayer.steamId && selectedPlayer.steamId !== "Desconhecido" && (
+                <div className="bg-green-500/10 border border-green-500/30 p-4 rounded-2xl flex items-center gap-4 animate-in slide-in-from-top-2">
+                  <div className="p-2 bg-green-500 rounded-full text-white"><ShieldCheck size={20} /></div>
+                  <div>
+                    <p className="text-[10px] font-bold text-green-500 uppercase">SteamID64 Detectado via Log Advanced</p>
+                    <p className="text-lg font-mono font-bold text-white">{selectedPlayer.steamId}</p>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* FERRAMENTAS DE BUSCA (Apenas se não tiver ID) */}
+              {(!selectedPlayer.steamId || selectedPlayer.steamId === "Desconhecido") && (
+                <div className="space-y-3">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    <UserSearch size={14} /> 1. Encontre o perfil pelo nome de exibição:
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <a 
+                      href={`https://steamcommunity.com/search/users/#text=${encodeURIComponent(selectedPlayer.username)}`} 
+                      target="_blank" 
+                      className="flex items-center justify-between px-4 py-3 bg-[#171a21] hover:bg-[#2a475e] text-white rounded-xl border border-white/5 transition-all group"
+                    >
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold">Busca na Steam</span>
+                        <span className="text-[9px] text-slate-400">Página de Usuários</span>
+                      </div>
+                      <ExternalLink size={14} className="group-hover:translate-x-1 transition-transform" />
+                    </a>
+                    <a 
+                      href={`https://steamid.io/lookup`} 
+                      target="_blank" 
+                      className="flex items-center justify-between px-4 py-3 bg-[#1e293b] hover:bg-[#334155] text-white rounded-xl border border-white/5 transition-all group"
+                    >
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold">STEAMID I/O</span>
+                        <span className="text-[9px] text-slate-400">Busca por URL</span>
+                      </div>
+                      <ExternalLink size={14} className="group-hover:translate-x-1 transition-transform" />
+                    </a>
+                  </div>
+                </div>
+              )}
 
               {/* RESOLUÇÃO DE ID */}
               <div className="space-y-4 pt-4 border-t border-slate-800">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                  <Fingerprint size={14} /> 2. Cole o SteamID64 (17 dígitos) encontrado:
+                  <Fingerprint size={14} /> {selectedPlayer.steamId && selectedPlayer.steamId !== "Desconhecido" ? '2. Detalhes Adicionais' : '2. Cole o SteamID64 encontrado:'}
                 </p>
                 <div className="flex gap-2">
                   <input 
@@ -160,13 +172,16 @@ const BanningPanel: React.FC<BanningPanelProps> = ({ userRole, onLogAction }) =>
                     placeholder="76561198XXXXXXXXX"
                     value={inputSteamId}
                     onChange={(e) => setInputSteamId(e.target.value)}
-                    className="flex-1 bg-black border border-slate-800 rounded-xl px-4 py-3 text-blue-400 font-mono text-sm focus:ring-2 focus:ring-blue-500/30 outline-none"
+                    className={`flex-1 bg-black border rounded-xl px-4 py-3 font-mono text-sm focus:ring-2 outline-none transition-all ${
+                      selectedPlayer.steamId && selectedPlayer.steamId !== "Desconhecido" 
+                      ? 'border-green-500/50 text-green-400 focus:ring-green-500/30' 
+                      : 'border-slate-800 text-blue-400 focus:ring-blue-500/30'
+                    }`}
                   />
                   <a 
                     href="https://steamid.io" 
                     target="_blank" 
                     className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold flex items-center gap-2"
-                    title="Se você achou o link do perfil, converta-o aqui"
                   >
                     Resolver URL <ExternalLink size={12} />
                   </a>
@@ -201,7 +216,7 @@ const BanningPanel: React.FC<BanningPanelProps> = ({ userRole, onLogAction }) =>
         
         <div className="flex gap-2">
           <button 
-            onClick={() => openBanModal({username: "Manual", clientId: "0"})}
+            onClick={() => openBanModal({username: "Manual", clientId: "0", steamId: "", connectedAt: ""})}
             className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-sm font-bold border border-slate-700 transition-all flex items-center gap-2"
           >
             <UserPlus size={16} />
@@ -228,7 +243,7 @@ const BanningPanel: React.FC<BanningPanelProps> = ({ userRole, onLogAction }) =>
               <Radio size={18} className="text-blue-500 animate-pulse" />
               Sessão de Jogo Ativa
             </h3>
-            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Detectados via server.log.txt</span>
+            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Sincronizado via Advanced Log</span>
           </div>
           <div className="px-3 py-1 bg-blue-500/10 rounded-full border border-blue-500/20">
             <span className="text-[10px] font-black text-blue-400">{onlinePlayers.length} ONLINE</span>
@@ -239,11 +254,19 @@ const BanningPanel: React.FC<BanningPanelProps> = ({ userRole, onLogAction }) =>
           {onlinePlayers.map(player => (
             <div key={player.clientId} className="bg-slate-800/30 border border-slate-700/50 rounded-2xl p-4 flex items-center justify-between hover:bg-slate-800/50 hover:border-blue-500/50 transition-all group">
               <div className="flex flex-col overflow-hidden">
-                <span className="text-sm font-black text-white truncate" title={player.username}>{player.username}</span>
+                <div className="flex items-center gap-2">
+                   <span className="text-sm font-black text-white truncate" title={player.username}>{player.username}</span>
+                   {/* Wrap ShieldCheck in a span to provide a native tooltip since the icon component doesn't accept a 'title' prop */}
+                   {player.steamId && player.steamId !== "Desconhecido" && (
+                     <span title="Identificado via Steam">
+                       <ShieldCheck size={14} className="text-green-500" />
+                     </span>
+                   )}
+                </div>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-[9px] px-1.5 py-0.5 bg-slate-700 text-slate-400 rounded font-mono">CID: {player.clientId}</span>
                   <span className="w-1 h-1 rounded-full bg-slate-600"></span>
-                  <span className="text-[9px] text-slate-500 font-bold uppercase">{player.connectedAt}</span>
+                  <span className="text-[9px] text-slate-500 font-bold uppercase">{player.steamId !== "Desconhecido" ? "ID ATIVO" : player.connectedAt}</span>
                 </div>
               </div>
               <button 

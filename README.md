@@ -1,85 +1,99 @@
 
 <p align="center">
-  <img src="https://i.imgur.com/sqGMqV1.png" alt="NINOmods Logo" width="200" />
+  <img src="https://i.postimg.cc/kgP2578h/nino_logop.png" alt="NINOmods Logo" width="180" />
 </p>
 
-<h1 align="center">NINOmods Manager - ETS2 Pro</h1>
+<h1 align="center">NINOmods Manager — ETS2 Dedicated Pro</h1>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/React-19-blue?style=for-the-badge&logo=react" />
-  <img src="https://img.shields.io/badge/Vite-6-purple?style=for-the-badge&logo=vite" />
-  <img src="https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css" />
-  <img src="https://img.shields.io/badge/Debian-13-A81D33?style=for-the-badge&logo=debian" />
-</p>
-
-<p align="center">
-  <strong>A solução definitiva para gerenciamento de servidores dedicados de Euro Truck Simulator 2.</strong><br />
-  Interface moderna, controle em tempo real e automação avançada para a sua empresa virtual.
-</p>
-
----
-
-## 📸 Preview do Sistema
-
-<p align="center">
-  <img src="https://i.imgur.com/sf8gQw0.png" alt="Dashboard NINOmods" width="100%" style="border-radius: 10px; border: 1px solid #334155;" />
-</p>
-
----
-
-## ✨ Funcionalidades Premium
-
-*   **📊 Dashboard de Performance**: Gráficos de atividade em tempo real, monitoramento de CPU, RAM e contagem de jogadores online.
-*   **⚙️ Editor Visual SII**: Altere o `server_config.sii` diretamente pelo navegador com interface amigável. Chega de editar arquivos de texto via terminal!
-*   **🔨 Gestão de Banimentos**: Lista de banidos (`banlist.sii`) integrada, permitindo banir e desbanir jogadores com apenas um clique.
-*   **🤖 Automação e Resiliência**: Configuração de reinicialização diária automática e integração nativa com `systemd` do Debian.
-*   **📟 Console em Tempo Real**: Visualize os logs do binário do servidor e envie comandos diretamente para o sistema.
-*   **🔐 Controle de Acesso**: Sistema de permissões para Administradores e Superadmins.
-
----
-
-## 🛠️ Stack Tecnológica
-
-- **Frontend**: React 19, TypeScript, Tailwind CSS.
-- **Ícones**: Lucide React.
-- **Gráficos**: Recharts.
-- **Backend**: Node.js (API de comunicação com o sistema Debian).
-- **Servidor Web**: Nginx como Proxy Reverso.
-
----
-
-## 🚀 Como Instalar (Quick Start)
-
-### 1. Preparação no Debian 13
-```bash
-apt update && apt install git nodejs npm nginx -y
-git clone https://github.com/byttencourt/NINOmods-Painel-ETS.git
-cd NINOmods-Painel-ETS
-```
-
-### 2. Build do Painel
-No seu ambiente de desenvolvimento:
-```bash
-npm install
-npm run build
-```
-Mova a pasta `dist` gerada para `/var/www/html/ets2-panel/` no seu servidor.
-
-### 3. Configuração do Nginx
-Crie um arquivo em `/etc/nginx/sites-available/ets2-panel` com a porta 8081 apontando para o seu diretório e fazendo o proxy da `/api` para a porta 3000.
-
----
-
-## 👨‍💻 Desenvolvido por
-
-<p align="left">
-  <strong>NINOdev</strong><br />
-  Soluções Inteligentes para Euro Truck Simulator 2.<br />
-  <a href="https://github.com/byttencourt">
-    <img src="https://img.shields.io/badge/GitHub-Perfil-181717?style=flat-square&logo=github" />
-  </a>
+  <img src="https://img.shields.io/badge/Status-Estável-green?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Debian-13-A81D33?style=for-the-badge&logo=debian&logoColor=white" />
+  <img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black" />
+  <img src="https://img.shields.io/badge/Node.js-LTS-339933?style=for-the-badge&logo=node.js&logoColor=white" />
+  <img src="https://img.shields.io/badge/Tailwind-V4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" />
 </p>
 
 <p align="center">
-  <em>"Transformando a simulação em gerenciamento profissional."</em>
+  <strong>A solução definitiva e de alta performance para a gestão de servidores Euro Truck Simulator 2.</strong><br />
+  Desenvolvido para empresas virtuais que exigem estabilidade, dados precisos e controle absoluto sobre o ambiente Debian.
+</p>
+
+---
+
+## 💎 A Vitrine de Funcionalidades
+
+O **NINOmods Manager** não é apenas um painel; é um ecossistema completo de gerenciamento que elimina a necessidade de acesso via terminal (SSH) para operações cotidianas.
+
+### 📊 Dashboard de Inteligência (Real-Time)
+*   **Telemetria de 24 Horas**: Gráfico de atividade histórica que armazena 288 pontos de dados (amostragem a cada 5 min), permitindo identificar horários de pico e engajamento do comboio.
+*   **Monitoramento de Recursos Críticos**: Visualização em tempo real do uso de CPU e RAM do servidor Proxmox/Debian.
+*   **Contador de Jogadores Live**: Sincronização de 5 segundos com o log oficial para contagem precisa de `Online / Max Players`.
+*   **Indicador Uptime**: Cronômetro de estabilidade do processo do servidor.
+
+### ⚙️ Gestão de Configuração SII (No-Code)
+*   **Editor Visual Progressivo**: Esqueça a edição manual do `server_config.sii`. Altere nomes de lobby, senhas e mensagens de boas-vindas em uma interface elegante.
+*   **Controle de Simulação**: Habilite/Desabilite tráfego IA, dano entre jogadores, limitador de velocidade e colisões em áreas de serviço com um clique.
+*   **Gestão de GSLT**: Campo dedicado para tokens da Steam, essencial para servidores que buscam visibilidade na lista pública.
+*   **Lista de Moderadores**: Adicione ou remova SteamIDs de moderadores sem reiniciar o servidor.
+
+### 🛡️ Moderação Avançada
+*   **Radar de Jogadores**: Lista detalhada de quem está no servidor agora, incluindo ID de conexão e tempo de permanência.
+*   **Identificador de SteamID**: Sistema que auxilia na busca do SteamID64 do infrator diretamente pelo nome de usuário no log.
+*   **Banlist Integrada**: Interface para gerenciar o arquivo `banlist.sii`, permitindo banimentos permanentes e revogações instantâneas.
+
+### 🤖 Automação e Resiliência
+*   **Restart Diário Programado**: Configure um horário (ex: 04:00 AM) para o servidor reiniciar automaticamente via Cron, garantindo a limpeza de cache e performance.
+*   **Persistência no Boot**: Integração nativa com `systemd` para garantir que o servidor suba sozinho caso o Debian seja reiniciado.
+*   **Console Web Interativo**: Visualize o log de saída do binário `eurotrucks2_server` em tempo real com sintaxe colorida (Highlight de Erros e Avisos).
+
+---
+
+## 🛠️ Arquitetura Técnica
+
+*   **Frontend**: React 19 com TypeScript, utilizando **Lucide React** para iconografia e **Recharts** para visualização de dados complexos.
+*   **Backend**: API em Node.js (Express) com execução de comandos de baixo nível via `child_process` para interação direta com o Linux.
+*   **Segurança**: Sistema de autenticação JWT com níveis de acesso:
+    *   **SUPERADMIN**: Controle total de serviços e automação.
+    *   **ADMIN**: Gestão de jogadores, banimentos e monitoramento.
+*   **Otimização de Log**: Leitura via `tail -n` para garantir que o painel permaneça veloz mesmo com arquivos de log de centenas de MB.
+
+---
+
+## 🚀 Guia de Implementação Rápida
+
+### Requisitos
+- Debian 12 ou 13.
+- Node.js 18+.
+- Nginx (recomendado para Proxy Reverso).
+
+### Instalação no Servidor
+1. **Clonar Repositório**:
+   ```bash
+   git clone https://github.com/byttencourt/NINOmods-Painel-ETS.git
+   ```
+2. **Backend**:
+   ```bash
+   cd ets2-backend
+   npm install
+   node server.js
+   ```
+3. **Frontend**:
+   ```bash
+   npm install
+   npm run build
+   # Mova a pasta 'dist' para o diretório do Nginx
+   ```
+
+---
+
+## 👨‍💻 Sobre o Desenvolvedor
+
+**NINOdev (byttencourt)**
+Especialista em automação de servidores de jogos e interfaces de alta fidelidade. Focado em transformar logs complexos de simulação em experiências de usuário intuitivas e poderosas.
+
+> *"Transformando a simulação em gerenciamento profissional de frotas."*
+
+---
+<p align="center">
+  PROJETADO PARA O DEBIAN 13 "TRIAXIE" | 2024-2025
 </p>

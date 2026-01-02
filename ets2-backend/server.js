@@ -46,11 +46,12 @@ function updateHistory(currentPlayers) {
         let history = JSON.parse(fs.readFileSync(HISTORY_DB, 'utf8'));
         const now = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         
-        // Adiciona novo ponto
         history.push({ time: now, players: currentPlayers });
         
-        // Mantém apenas os últimos 20 registros (aprox. 1h40 de histórico se for a cada 5m)
-        if (history.length > 20) history.shift();
+        // LIMITE DE 24 HORAS:
+        // 1 amostra a cada 5 minutos = 12 amostras por hora.
+        // 12 amostras * 24 horas = 288 registros.
+        if (history.length > 288) history.shift();
         
         fs.writeFileSync(HISTORY_DB, JSON.stringify(history));
     } catch (e) { console.error("Erro na telemetria:", e); }
@@ -58,8 +59,9 @@ function updateHistory(currentPlayers) {
 
 // Intervalo de amostragem: a cada 5 minutos
 setInterval(() => {
-    const stats = getLiveStats();
-    updateHistory(stats.playersOnline);
+    getLiveStats().then(stats => {
+        updateHistory(stats.playersOnline);
+    });
 }, 5 * 60 * 1000);
 
 function formatMs(ms) {
@@ -75,23 +77,28 @@ function formatMs(ms) {
     return parts.join(' ');
 }
 
-function getLiveStats() {
-    let uptime = "Offline", players = 0;
-    if (fs.existsSync(LOG_PATH)) {
-        try {
-            const log = fs.readFileSync(LOG_PATH, 'utf8').split('\n');
-            for (let i = log.length - 1; i >= 0; i--) {
-                if (log[i].includes('State: running')) {
-                    const tm = log[i].match(/Time:\s*(\d+)/);
-                    const pl = log[i].match(/Players:\s*(\d+)/);
+// Busca otimizada lendo apenas as últimas 500 linhas do log
+async function getLiveStats() {
+    return new Promise((resolve) => {
+        let uptime = "Offline", players = 0;
+        if (!fs.existsSync(LOG_PATH)) return resolve({ uptime, playersOnline: players });
+        
+        exec(`tail -n 500 "${LOG_PATH}"`, (err, stdout) => {
+            if (err) return resolve({ uptime, playersOnline: players });
+            
+            const lines = stdout.split('\n');
+            for (let i = lines.length - 1; i >= 0; i--) {
+                if (lines[i].includes('State: running')) {
+                    const tm = lines[i].match(/Time:\s*(\d+)/);
+                    const pl = lines[i].match(/Players:\s*(\d+)/);
                     if (tm) uptime = formatMs(parseInt(tm[1]));
                     if (pl) players = parseInt(pl[1]);
                     break;
                 }
             }
-        } catch (e) {}
-    }
-    return { uptime, playersOnline: players };
+            resolve({ uptime, playersOnline: players });
+        });
+    });
 }
 
 // API ENDPOINTS
@@ -105,13 +112,13 @@ app.post('/api/login', (req, res) => {
     } catch (e) { res.status(500).json({ message: "Erro interno." }); }
 });
 
-app.get('/api/server/stats', (req, res) => {
+app.get('/api/server/stats', async (req, res) => {
     const totalMem = os.totalmem();
     const usedMem = totalMem - os.freemem();
     const cpuLoad = (os.loadavg()[0] * 10).toFixed(1) + "%";
     const systemTime = new Date().toLocaleTimeString('pt-BR', { hour12: false });
     
-    const live = getLiveStats();
+    const live = await getLiveStats();
     let history = [];
     try { history = JSON.parse(fs.readFileSync(HISTORY_DB, 'utf8')); } catch(e) {}
 
@@ -129,9 +136,9 @@ app.get('/api/server/stats', (req, res) => {
 
 app.get('/api/server/players', (req, res) => {
     if (!fs.existsSync(LOG_PATH)) return res.json({ players: [] });
-    try {
-        const logContent = fs.readFileSync(LOG_PATH, 'utf8');
-        const lines = logContent.split('\n');
+    exec(`tail -n 1000 "${LOG_PATH}"`, (err, stdout) => {
+        if (err) return res.json({ players: [] });
+        const lines = stdout.split('\n');
         const playersMap = new Map();
         lines.forEach(line => {
             const joinMatch = line.match(/\[MP\] (.*) connected, client_id = (\d+)/);
@@ -142,7 +149,7 @@ app.get('/api/server/players', (req, res) => {
             if (leaveMatch) playersMap.delete(leaveMatch[2]);
         });
         res.json({ players: Array.from(playersMap.values()) });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    });
 });
 
 app.get('/api/server/status', (req, res) => {

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Users, Cpu, HardDrive, Activity, MessageSquare, Loader2 } from 'lucide-react';
+import { Users, Cpu, HardDrive, Activity, MessageSquare, Loader2, Radio, Clock } from 'lucide-react';
 import { 
   AreaChart, 
   Area, 
@@ -10,10 +10,16 @@ import {
   Tooltip, 
   ResponsiveContainer 
 } from 'recharts';
-import { ServerStatus, ServerStats } from '../types';
+import { ServerStatus, ServerStats, ConnectedPlayer } from '../types';
 
-const StatCard: React.FC<{ icon: any, label: string, value: string, color: string }> = ({ icon: Icon, label, value, color }) => (
-  <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition-colors">
+const StatCard: React.FC<{ icon: any, label: string, value: string, color: string, isLive?: boolean }> = ({ icon: Icon, label, value, color, isLive }) => (
+  <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition-colors relative group">
+    {isLive && (
+      <div className="absolute top-3 right-3 flex items-center gap-1.5">
+        <span className="flex h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+        <span className="text-[8px] font-black text-green-500/50 uppercase tracking-tighter">LIVE</span>
+      </div>
+    )}
     <div className="flex items-center gap-4">
       <div className={`p-3 rounded-lg bg-opacity-10 ${color.replace('text-', 'bg-')}`}>
         <Icon className={color} size={24} />
@@ -40,12 +46,23 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-const Dashboard: React.FC<{ status: ServerStatus, stats: ServerStats, logs: string[] }> = ({ status, stats, logs }) => {
+interface DashboardProps {
+  status: ServerStatus;
+  stats: ServerStats;
+  players: ConnectedPlayer[];
+  logs: string[];
+}
+
+const Dashboard: React.FC<DashboardProps> = ({ status, stats, players, logs }) => {
   const chartData = stats.history && stats.history.length > 0 
     ? stats.history 
     : [{ time: 'Iniciando...', players: 0 }];
 
   const isOnline = status === ServerStatus.ONLINE;
+
+  // Calcula o intervalo de ticks para o eixo X baseado no número de pontos
+  // Se tivermos 288 pontos (24h), mostramos um texto a cada 24 pontos (cada 2 horas)
+  const xTickInterval = chartData.length > 50 ? Math.floor(chartData.length / 10) : 0;
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -54,8 +71,9 @@ const Dashboard: React.FC<{ status: ServerStatus, stats: ServerStats, logs: stri
         <StatCard 
           icon={Users} 
           label="Jogadores Online" 
-          value={isOnline ? `${stats.playersOnline} / ${stats.playersMax || 128}` : "0 / 0"} 
-          color="text-blue-500" 
+          value={isOnline ? `${players.length} / ${stats.playersMax || 128}` : "0 / 0"} 
+          color="text-blue-500"
+          isLive={isOnline}
         />
         <StatCard 
           icon={Activity} 
@@ -83,12 +101,12 @@ const Dashboard: React.FC<{ status: ServerStatus, stats: ServerStats, logs: stri
           <div className="flex items-center justify-between mb-6">
             <h3 className="font-bold text-white flex items-center gap-2">
               <Activity size={18} className="text-blue-500" />
-              Atividade do Servidor (Histórico)
+              Atividade do Servidor (Últimas 24h)
             </h3>
             <div className="flex items-center gap-2">
               {stats.history.length === 0 && <Loader2 size={12} className="animate-spin text-slate-500" />}
               <span className="text-[10px] font-bold text-slate-500 bg-slate-800 px-2.5 py-1 rounded-full uppercase tracking-widest">
-                Amostragem: 5 min
+                Janela: 24h móveis
               </span>
             </div>
           </div>
@@ -109,6 +127,7 @@ const Dashboard: React.FC<{ status: ServerStatus, stats: ServerStats, logs: stri
                   tickLine={false} 
                   axisLine={false} 
                   dy={10}
+                  interval={xTickInterval}
                 />
                 <YAxis 
                   stroke="#475569" 
@@ -125,32 +144,64 @@ const Dashboard: React.FC<{ status: ServerStatus, stats: ServerStats, logs: stri
                   strokeWidth={3}
                   fillOpacity={1} 
                   fill="url(#colorPlayers)" 
-                  animationDuration={1500}
+                  isAnimationActive={true}
+                  animationDuration={1000}
                 />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Recent Events */}
+        {/* Jogadores em Tempo Real */}
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-bold text-white flex items-center gap-2">
-              <MessageSquare size={18} className="text-green-500" />
-              Eventos Recentes
+              <Users size={18} className="text-blue-500" />
+              Jogadores Ativos
             </h3>
+            <span className="text-[9px] font-bold text-slate-500 border border-slate-800 px-2 py-0.5 rounded">POLLING: 5S</span>
           </div>
-          <div className="space-y-4 flex-1 overflow-y-auto max-h-[300px] pr-2 scrollbar-thin">
-            {logs.slice(-10).reverse().map((log, i) => (
-              <div key={i} className="flex gap-3 text-sm animate-in slide-in-from-left-2">
-                <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-slate-700 flex-shrink-0" />
-                <span className="text-slate-400 font-mono text-[11px] leading-relaxed break-all">{log}</span>
+          <div className="space-y-2 flex-1 overflow-y-auto max-h-[300px] pr-2 scrollbar-thin">
+            {players.length > 0 ? (
+              players.map((player) => (
+                <div key={player.clientId} className="flex items-center justify-between p-3 bg-slate-800/30 border border-slate-800/50 rounded-lg group hover:border-blue-500/30 transition-all">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-white truncate max-w-[120px]">{player.username}</span>
+                    <span className="text-[9px] text-slate-500 font-mono">ID: {player.clientId}</span>
+                  </div>
+                  <div className="text-right flex flex-col items-end">
+                    <div className="flex items-center gap-1 text-green-500/70">
+                      <Clock size={10} />
+                      <span className="text-[9px] font-bold">{player.connectedAt}</span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full py-8 text-slate-600 gap-2 opacity-50">
+                <Radio size={24} />
+                <p className="text-xs font-medium italic">Nenhum comboio ativo</p>
               </div>
-            ))}
+            )}
           </div>
-          <div className="mt-4 pt-4 border-t border-slate-800">
-             <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest text-center italic">Monitorando log do Debian em tempo real</p>
-          </div>
+        </div>
+      </div>
+
+      {/* Recent Events */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-bold text-white flex items-center gap-2">
+            <MessageSquare size={18} className="text-green-500" />
+            Atividade Recente do Log
+          </h3>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
+          {logs.slice(-10).reverse().map((log, i) => (
+            <div key={i} className="flex gap-3 text-sm animate-in slide-in-from-left-2 items-center">
+              <div className="w-1.5 h-1.5 rounded-full bg-slate-700 flex-shrink-0" />
+              <span className="text-slate-400 font-mono text-[10px] truncate leading-relaxed">{log}</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>

@@ -10,7 +10,7 @@ import Sidebar from './components/Sidebar';
 import Login from './components/Login';
 import { auth } from './lib/auth';
 import { api } from './lib/api';
-import { ServerStatus, ServerConfig, AutomationSettings, UserSession, ServerStats } from './types';
+import { ServerStatus, ServerConfig, AutomationSettings, UserSession, ServerStats, ConnectedPlayer } from './types';
 
 const INITIAL_CONFIG: ServerConfig = {
   lobby_name: "Sincronizando...",
@@ -66,6 +66,7 @@ const App: React.FC = () => {
   const [config, setConfig] = useState<ServerConfig>(INITIAL_CONFIG);
   const [automation, setAutomation] = useState<AutomationSettings>(INITIAL_AUTOMATION);
   const [stats, setStats] = useState<ServerStats>(INITIAL_STATS);
+  const [players, setPlayers] = useState<ConnectedPlayer[]>([]);
   const [logs, setLogs] = useState<string[]>(["[SYSTEM] Painel NINOmods iniciado."]);
 
   useEffect(() => {
@@ -78,9 +79,10 @@ const App: React.FC = () => {
     init();
   }, []);
 
+  // Intervalo de 5 segundos para dados críticos (jogadores e status)
   useEffect(() => {
     if (!session) return;
-    const interval = setInterval(() => refreshStats(), 10000);
+    const interval = setInterval(() => refreshRealtimeData(), 5000);
     return () => clearInterval(interval);
   }, [session]);
 
@@ -93,7 +95,7 @@ const App: React.FC = () => {
       ]);
       setConfig(prev => ({ ...prev, ...realData }));
       setAutomation(automationData);
-      await refreshStats();
+      await refreshRealtimeData();
       addLog(`Sucesso: Debian 13 sincronizado.`);
     } catch (err: any) {
       addLog(`Aviso de Sincronia: ${err.message}`);
@@ -102,16 +104,18 @@ const App: React.FC = () => {
     }
   };
 
-  const refreshStats = async () => {
+  const refreshRealtimeData = async () => {
     try {
-      const [realStats, realStatus] = await Promise.all([
+      const [realStats, realStatus, currentPlayers] = await Promise.all([
         api.fetchStats(),
-        api.fetchStatus()
+        api.fetchStatus(),
+        api.fetchPlayers()
       ]);
       setStats(realStats);
       setStatus(realStatus);
+      setPlayers(currentPlayers);
     } catch (e) {
-      console.warn("Stats offline.");
+      console.warn("Sync falhou.");
     }
   };
 
@@ -133,7 +137,7 @@ const App: React.FC = () => {
     try {
       await api.sendServerAction(action);
       addLog(`Sucesso: Operação ${action} confirmada pelo sistema.`);
-      setTimeout(refreshStats, 3000);
+      setTimeout(refreshRealtimeData, 3000);
     } catch (err: any) {
       const msg = err.message || "Erro desconhecido";
       addLog(`ERRO: ${msg}`);
@@ -204,7 +208,7 @@ const App: React.FC = () => {
         </header>
 
         <div className="p-8">
-          {activeTab === 'dashboard' && <Dashboard status={status} stats={stats} logs={logs} />}
+          {activeTab === 'dashboard' && <Dashboard status={status} stats={stats} players={players} logs={logs} />}
           {activeTab === 'config' && <ConfigPanel config={config} setConfig={setConfig} readOnly={session.role !== 'SUPERADMIN'} />}
           {activeTab === 'bans' && <BanningPanel userRole={session.role} onLogAction={addLog} />}
           {activeTab === 'logs' && <LogConsole logs={logs} />}

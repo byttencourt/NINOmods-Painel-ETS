@@ -8,7 +8,7 @@ interface SidebarProps {
   setActiveTab: (tab: any) => void;
   onLogout: () => void;
   userRole: UserRole;
-  username: string; // Nova prop para o nome real
+  username: string; 
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, userRole, username }) => {
@@ -25,13 +25,13 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, us
       <div className="p-6">
         <div className="flex items-center gap-3 mb-8">
           <img 
-            src="https://i.imgur.com/ClDQ04m.png" 
-            alt="Fraternidade Logo" 
+            src="https://i.postimg.cc/kgP2578h/nino_logop.png" 
+            alt="NINOmods Logo" 
             className="h-10 w-auto drop-shadow-[0_0_8px_rgba(59,130,246,0.3)]"
           />
           <div>
-            <h2 className="font-bold text-white tracking-tight leading-none text-sm">FRATERNIDADE</h2>
-            <p className="text-[9px] text-slate-500 uppercase tracking-widest font-bold mt-1">Dedicated Server</p>
+            <h2 className="font-black text-white tracking-tight leading-none text-sm italic">NINOMODS</h2>
+            <p className="text-[9px] text-slate-500 uppercase tracking-widest font-bold mt-1">Dedicated Pro</p>
           </div>
         </div>
 
@@ -57,7 +57,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, us
       </div>
 
       <div className="mt-auto p-6 space-y-4">
-        {/* CARD DE PERFIL ATUALIZADO */}
         <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50 shadow-inner">
           <div className="flex justify-between items-start mb-3">
             <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Perfil Atual</p>

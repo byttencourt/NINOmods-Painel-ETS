@@ -21,7 +21,7 @@
 
 ## 🖼️ Interface do Sistema
 <p align="center">
-  <img src="https://i.postimg.cc/Xv0K0zR7/dashboard-preview.png" alt="Interface Preview" width="100%" style="border-radius: 12px; border: 1px solid #1e293b;" />
+  <img src="https://i.imgur.com/TGyGnBr.png" alt="Interface Preview" width="100%" style="border-radius: 12px; border: 1px solid #1e293b;" />
   <br><em>*Visualização do Dashboard em tempo real com telemetria de 24 horas.*</em>
 </p>
 

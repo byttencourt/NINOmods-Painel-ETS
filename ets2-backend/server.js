@@ -4,7 +4,7 @@ const cors = require('cors');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { exec } = require('child_process');
+const { exec, execSync } = require('child_process');
 const app = express();
 
 app.use(cors());
@@ -15,8 +15,52 @@ const BASE_PATH = '/home/steam/.local/share/Euro Truck Simulator 2';
 const CONFIG_PATH = `${BASE_PATH}/server_config.sii`;
 const BAN_PATH = `${BASE_PATH}/banlist.sii`;
 const LOG_PATH = `${BASE_PATH}/server.log.txt`;
-const ADMINS_DB_PATH = path.join(__dirname, 'admins.json');
 const SERVICE_NAME = 'ets2-server.service'; 
+
+// Caminhos do Banco de Dados Interno do Painel
+const ADMINS_DB_PATH = path.join(__dirname, 'admins.json');
+const AUTOMATION_DB = path.join(__dirname, 'automation.json');
+const HISTORY_DB = path.join(__dirname, 'history.json');
+
+// Inicialização de Arquivos
+if (!fs.existsSync(ADMINS_DB_PATH)) {
+    const defaultAdmins = [
+        { "username": "byttencourt", "password": "Nico1503", "role": "SUPERADMIN" },
+        { "username": "Christian", "password": "ati13", "role": "SUPERADMIN" },
+        { "username": "Leandro", "password": "Frater2026", "role": "ADMIN" }
+    ];
+    fs.writeFileSync(ADMINS_DB_PATH, JSON.stringify(defaultAdmins, null, 4));
+}
+
+if (!fs.existsSync(AUTOMATION_DB)) {
+    fs.writeFileSync(AUTOMATION_DB, JSON.stringify({ autoStartOnBoot: false, dailyRestart: false, restartHour: "04:00" }));
+}
+
+if (!fs.existsSync(HISTORY_DB)) {
+    fs.writeFileSync(HISTORY_DB, JSON.stringify([]));
+}
+
+// Lógica de Telemetria (Heartbeat)
+function updateHistory(currentPlayers) {
+    try {
+        let history = JSON.parse(fs.readFileSync(HISTORY_DB, 'utf8'));
+        const now = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        
+        // Adiciona novo ponto
+        history.push({ time: now, players: currentPlayers });
+        
+        // Mantém apenas os últimos 20 registros (aprox. 1h40 de histórico se for a cada 5m)
+        if (history.length > 20) history.shift();
+        
+        fs.writeFileSync(HISTORY_DB, JSON.stringify(history));
+    } catch (e) { console.error("Erro na telemetria:", e); }
+}
+
+// Intervalo de amostragem: a cada 5 minutos
+setInterval(() => {
+    const stats = getLiveStats();
+    updateHistory(stats.playersOnline);
+}, 5 * 60 * 1000);
 
 function formatMs(ms) {
     if (!ms || isNaN(ms)) return "00h 00m";
@@ -31,106 +75,112 @@ function formatMs(ms) {
     return parts.join(' ');
 }
 
-// LOGIN
+function getLiveStats() {
+    let uptime = "Offline", players = 0;
+    if (fs.existsSync(LOG_PATH)) {
+        try {
+            const log = fs.readFileSync(LOG_PATH, 'utf8').split('\n');
+            for (let i = log.length - 1; i >= 0; i--) {
+                if (log[i].includes('State: running')) {
+                    const tm = log[i].match(/Time:\s*(\d+)/);
+                    const pl = log[i].match(/Players:\s*(\d+)/);
+                    if (tm) uptime = formatMs(parseInt(tm[1]));
+                    if (pl) players = parseInt(pl[1]);
+                    break;
+                }
+            }
+        } catch (e) {}
+    }
+    return { uptime, playersOnline: players };
+}
+
+// API ENDPOINTS
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
     try {
-        if (!fs.existsSync(ADMINS_DB_PATH)) return res.status(500).json({ message: "Erro de auth." });
         const users = JSON.parse(fs.readFileSync(ADMINS_DB_PATH, 'utf8'));
         const user = users.find(u => u.username === username && u.password === password);
         if (user) return res.json({ id: Date.now().toString(), username: user.username, role: user.role, token: "TK_" + Date.now() });
-        res.status(401).json({ message: "Incorreto." });
-    } catch (e) { res.status(500).send(); }
+        res.status(401).json({ message: "Usuário ou senha incorretos." });
+    } catch (e) { res.status(500).json({ message: "Erro interno." }); }
 });
 
-// LISTA DE JOGADORES - MOTOR DE BUSCA AVANÇADO (MODO DEVELOPER)
+app.get('/api/server/stats', (req, res) => {
+    const totalMem = os.totalmem();
+    const usedMem = totalMem - os.freemem();
+    const cpuLoad = (os.loadavg()[0] * 10).toFixed(1) + "%";
+    const systemTime = new Date().toLocaleTimeString('pt-BR', { hour12: false });
+    
+    const live = getLiveStats();
+    let history = [];
+    try { history = JSON.parse(fs.readFileSync(HISTORY_DB, 'utf8')); } catch(e) {}
+
+    res.json({ 
+        cpuUsage: cpuLoad, 
+        ramUsage: (usedMem/1024/1024/1024).toFixed(1)+"GB", 
+        ramTotal: (totalMem/1024/1024/1024).toFixed(1)+"GB", 
+        uptime: live.uptime, 
+        playersOnline: live.playersOnline, 
+        playersMax: 128, 
+        systemTime, 
+        history: history 
+    });
+});
+
 app.get('/api/server/players', (req, res) => {
     if (!fs.existsSync(LOG_PATH)) return res.json({ players: [] });
-    
     try {
         const logContent = fs.readFileSync(LOG_PATH, 'utf8');
         const lines = logContent.split('\n');
         const playersMap = new Map();
-        
-        // Mapa auxiliar para vincular nomes/IDs detectados em linhas diferentes (Modo Developer)
-        const identityMap = new Map();
-
         lines.forEach(line => {
-            // 1. Captura Autenticação Steam (Disponível em modo g_developer)
-            // Ex: [Steam] Authenticating user 'Nino' (76561198099299481)
-            const steamMatch = line.match(/\[Steam\] Authenticating user '(.*)' \((\d{17})\)/);
-            if (steamMatch) {
-                const name = steamMatch[1].trim();
-                const steamId = steamMatch[2];
-                identityMap.set(name, steamId);
-            }
-
-            // 2. Captura Conexão ao Lobby
-            // Ex: [MP] Nino connected, client_id = 4
             const joinMatch = line.match(/\[MP\] (.*) connected, client_id = (\d+)/);
             if (joinMatch) {
-                const name = joinMatch[1].trim();
-                const cid = joinMatch[2];
-                
-                // Tenta resolver o SteamID pelo nome capturado anteriormente
-                const resolvedId = identityMap.get(name) || "Desconhecido";
-                
-                playersMap.set(cid, { 
-                    username: name, 
-                    steamId: resolvedId,
-                    clientId: cid,
-                    connectedAt: line.substring(0, 8),
-                    isAuthenticated: resolvedId !== "Desconhecido"
-                });
+                playersMap.set(joinMatch[2], { username: joinMatch[1].trim(), steamId: "Desconhecido", clientId: joinMatch[2], connectedAt: line.substring(0, 8) });
             }
-
-            // 3. Captura Desconexão
             const leaveMatch = line.match(/\[MP\] (.*) disconnected, client_id = (\d+)/);
-            if (leaveMatch) {
-                playersMap.delete(leaveMatch[2]);
-            }
+            if (leaveMatch) playersMap.delete(leaveMatch[2]);
         });
-
         res.json({ players: Array.from(playersMap.values()) });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// STATUS
 app.get('/api/server/status', (req, res) => {
     exec(`systemctl is-active ${SERVICE_NAME}`, (err, stdout) => {
         res.json({ active: stdout.trim() === 'active' });
     });
 });
 
-// STATS
-app.get('/api/server/stats', (req, res) => {
-    const totalMem = os.totalmem();
-    const usedMem = totalMem - os.freemem();
-    const cpuLoad = (os.loadavg()[0] * 10).toFixed(1) + "%";
-    let uptime = "Offline", players = 0;
-
-    if (fs.existsSync(LOG_PATH)) {
-        const log = fs.readFileSync(LOG_PATH, 'utf8').split('\n');
-        for (let i = log.length - 1; i >= 0; i--) {
-            if (log[i].includes('State: running')) {
-                const tm = log[i].match(/Time:\s*(\d+)/);
-                const pl = log[i].match(/Players:\s*(\d+)/);
-                if (tm) uptime = formatMs(parseInt(tm[1]));
-                if (pl) players = parseInt(pl[1]);
-                break;
-            }
-        }
-    }
-    res.json({ cpuUsage: cpuLoad, ramUsage: (usedMem/1024/1024/1024).toFixed(1)+"GB", ramTotal: (totalMem/1024/1024/1024).toFixed(1)+"GB", uptime, playersOnline: players, playersMax: 128, history: [] });
-});
-
-// CONFIGURAÇÃO
 app.get('/api/config', (req, res) => res.json({ content: fs.readFileSync(CONFIG_PATH, 'utf8') }));
 app.post('/api/config', (req, res) => { fs.writeFileSync(CONFIG_PATH, req.body.content); res.json({status: "ok"}); });
 
-// BANLIST
+app.get('/api/automation', (req, res) => {
+    try {
+        const data = fs.readFileSync(AUTOMATION_DB, 'utf8');
+        res.json(JSON.parse(data));
+    } catch (e) { res.json({ autoStartOnBoot: false, dailyRestart: false, restartHour: "04:00" }); }
+});
+
+app.post('/api/automation', (req, res) => {
+    const settings = req.body;
+    fs.writeFileSync(AUTOMATION_DB, JSON.stringify(settings, null, 4));
+    const systemdAction = settings.autoStartOnBoot ? 'enable' : 'disable';
+    exec(`sudo systemctl ${systemdAction} ${SERVICE_NAME}`);
+    try {
+        let currentCron = "";
+        try { currentCron = execSync('crontab -l').toString(); } catch(e) {}
+        const lines = currentCron.split('\n').filter(l => l.trim() !== '' && !l.includes('# ETS2_TASK'));
+        if (settings.dailyRestart) {
+            const [hour, min] = settings.restartHour.split(':');
+            lines.push(`${min} ${hour} * * * /usr/bin/systemctl restart ${SERVICE_NAME} # ETS2_TASK`);
+        }
+        const newCron = lines.join('\n').trim() + '\n';
+        fs.writeFileSync('/tmp/cron_tmp', newCron);
+        execSync('crontab /tmp/cron_tmp');
+    } catch (e) {}
+    res.json({ status: "ok" });
+});
+
 app.get('/api/bans', (req, res) => {
     if (!fs.existsSync(BAN_PATH)) return res.json({ bans: [] });
     const data = fs.readFileSync(BAN_PATH, 'utf8');
@@ -141,8 +191,9 @@ app.get('/api/bans', (req, res) => {
     });
     res.json({ bans });
 });
+
 app.post('/api/bans', (req, res) => {
-    let content = 'SiiNunit\n{\nban_list : _nameless.banlist {\n';
+    let content = 'SiiNunit\n{\nban_list : {\n';
     content += ` ban_list: ${req.body.bans.length}\n`;
     req.body.bans.forEach((ban, i) => content += ` ban_list[${i}]: ${ban.steamId}\n`);
     content += '}\n}';

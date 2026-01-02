@@ -8,18 +8,6 @@ export interface UserSession {
   token: string;
 }
 
-export interface ManagedUser {
-  id: string;
-  username: string;
-  role: UserRole;
-  lastLogin: string;
-  permissions: {
-    canControlServer: boolean;
-    canEditConfig: boolean;
-    canManageUsers: boolean;
-  };
-}
-
 export interface ServerStats {
   cpuUsage: string;
   ramUsage: string;
@@ -28,6 +16,7 @@ export interface ServerStats {
   playersOnline: number;
   playersMax: number;
   history: { time: string; players: number }[];
+  systemTime?: string; // Horário atual do Debian
 }
 
 export interface BannedUser {
@@ -66,14 +55,13 @@ export interface ServerConfig {
   hide_colliding: boolean;
   force_speed_limiter: boolean;
   mods_optioning: boolean;
-  timezones: number;
+  timezones: 0;
   service_no_collision: boolean;
   in_menu_ghosting: boolean;
   name_tags: boolean;
   friends_only: boolean;
   show_server: boolean;
   moderator_list: string[];
-  g_developer?: boolean; // Novo campo para modo developer
 }
 
 export enum ServerStatus {

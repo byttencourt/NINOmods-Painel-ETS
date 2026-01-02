@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { LayoutDashboard, Settings, Terminal, Clock, LogOut, UserX, ExternalLink } from 'lucide-react';
+import { LayoutDashboard, Settings, Terminal, Clock, LogOut, UserX, ExternalLink, User } from 'lucide-react';
 import { UserRole } from '../types';
 
 interface SidebarProps {
@@ -8,9 +8,10 @@ interface SidebarProps {
   setActiveTab: (tab: any) => void;
   onLogout: () => void;
   userRole: UserRole;
+  username: string; // Nova prop para o nome real
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, userRole }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, userRole, username }) => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'config', label: 'Configuração', icon: Settings },
@@ -24,8 +25,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, us
       <div className="p-6">
         <div className="flex items-center gap-3 mb-8">
           <img 
-            src="https://i.postimg.cc/kgP2578h/nino_logop.png" 
-            alt="NINO Logo" 
+            src="https://i.imgur.com/ClDQ04m.png" 
+            alt="Fraternidade Logo" 
             className="h-10 w-auto drop-shadow-[0_0_8px_rgba(59,130,246,0.3)]"
           />
           <div>
@@ -56,19 +57,23 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, us
       </div>
 
       <div className="mt-auto p-6 space-y-4">
-        <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50">
-          <div className="flex justify-between items-start mb-2">
+        {/* CARD DE PERFIL ATUALIZADO */}
+        <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50 shadow-inner">
+          <div className="flex justify-between items-start mb-3">
             <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Perfil Atual</p>
-            <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
-              userRole === 'SUPERADMIN' ? 'bg-purple-500/20 text-purple-400' : 'bg-blue-500/20 text-blue-400'
+            <span className={`text-[9px] px-2 py-0.5 rounded-full font-black tracking-tight ${
+              userRole === 'SUPERADMIN' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
             }`}>
               {userRole}
             </span>
           </div>
-          <div className="space-y-2">
-            <div className="flex justify-between text-xs">
-              <span className="text-slate-400">Usuário</span>
-              <span className="text-white font-mono">{userRole.toLowerCase()}</span>
+          <div className="flex items-center gap-3 pt-1">
+            <div className="p-2 bg-slate-900 rounded-lg text-blue-400">
+              <User size={16} />
+            </div>
+            <div className="flex flex-col overflow-hidden">
+              <span className="text-[10px] text-slate-500 font-bold uppercase">Usuário</span>
+              <span className="text-sm font-bold text-white truncate">{username}</span>
             </div>
           </div>
         </div>

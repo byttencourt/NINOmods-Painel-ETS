@@ -1,5 +1,5 @@
 
-import { ServerConfig, ServerStats, ServerStatus, BannedUser, ConnectedPlayer } from '../types';
+import { ServerConfig, ServerStats, ServerStatus, BannedUser, ConnectedPlayer, AutomationSettings } from '../types';
 
 const getBaseUrl = () => {
   const { hostname, protocol, port } = window.location;
@@ -25,7 +25,7 @@ export const parseSiiConfig = (siiContent: string): Partial<ServerConfig> => {
     const match = line.match(/^\s*(\w+)\s*:\s*(.*)$/);
     if (match) {
       let [_, key, value] = match;
-      if (key === 'moderator_list') return;
+      if (key === 'moderator_list' || key === 'g_developer') return;
       value = value.trim().split('#')[0].trim().replace(/^"(.*)"$/, '$1'); 
       if (value === 'true') config[key] = true;
       else if (value === 'false') config[key] = false;
@@ -38,9 +38,9 @@ export const parseSiiConfig = (siiContent: string): Partial<ServerConfig> => {
 };
 
 export const stringifySiiConfig = (config: ServerConfig): string => {
-  let content = 'SiiNunit\n{\nserver_config : _nameless.config {\n';
+  let content = 'SiiNunit\n{\nserver_config : {\n';
   Object.entries(config).forEach(([key, value]) => {
-    if (key === 'moderator_list') return;
+    if (key === 'moderator_list' || key === 'g_developer') return;
     const formattedValue = typeof value === 'string' ? `"${value}"` : value;
     content += ` ${key}: ${formattedValue}\n`;
   });
@@ -99,6 +99,19 @@ export const api = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content: stringifySiiConfig(config) })
+    });
+  },
+
+  async fetchAutomation(): Promise<AutomationSettings> {
+    const response = await fetch(`${BACKEND_URL}/automation`);
+    return await response.json();
+  },
+
+  async saveAutomation(automation: AutomationSettings): Promise<void> {
+    await fetch(`${BACKEND_URL}/automation`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(automation)
     });
   },
 

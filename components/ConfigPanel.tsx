@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Save, Shield, Globe, Monitor, Cpu, Lock, Trash2, Plus, Eye, EyeOff, Terminal } from 'lucide-react';
+import { Save, Shield, Globe, Monitor, Cpu, Lock, Trash2, Plus, Eye, EyeOff } from 'lucide-react';
 import { ServerConfig } from '../types';
 import { api } from '../lib/api';
 
@@ -32,7 +32,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, setConfig, readOnly }
     setIsSaving(true);
     try {
       await api.saveConfig(config);
-      alert('Configuração salva com sucesso no Debian!');
+      alert('Configuração aplicada com sucesso!');
     } catch (err) {
       alert('Erro ao salvar no servidor.');
     } finally {
@@ -82,7 +82,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, setConfig, readOnly }
             className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white rounded-lg font-bold shadow-lg shadow-blue-900/20 transition-all active:scale-95"
           >
             {isSaving ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={20} />}
-            {isSaving ? 'Salvando...' : 'Aplicar no Debian'}
+            {isSaving ? 'Aplicar no Debian' : 'Aplicar no Debian'}
           </button>
         ) : (
           <div className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-slate-500 rounded-lg text-[10px] font-bold border border-slate-700">
@@ -131,24 +131,6 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({ config, setConfig, readOnly }
                 <Cpu size={20} className="text-purple-500" /> Regras de Simulação
               </h3>
               
-              {/* MODO DEVELOPER ALERT */}
-              <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl mb-6 flex items-start gap-4">
-                <Terminal className="text-amber-500 shrink-0 mt-1" size={20} />
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-bold text-amber-500">Modo Developer (Log Detalhado)</span>
-                    <button 
-                      onClick={() => handleToggle('g_developer')}
-                      disabled={readOnly}
-                      className={`relative inline-flex h-5 w-10 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ${config.g_developer ? 'bg-amber-500' : 'bg-slate-700'}`}
-                    >
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition duration-200 ${config.g_developer ? 'translate-x-5' : 'translate-x-0'}`} />
-                    </button>
-                  </div>
-                  <p className="text-[11px] text-slate-400">Ative para expor o SteamID64 de quem conectar no arquivo de log. Essencial para moderação rápida.</p>
-                </div>
-              </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <ToggleSwitch label="Dano entre Jogadores" active={config.player_damage} onToggle={() => handleToggle('player_damage')} readOnly={readOnly} />
                 <ToggleSwitch label="Tráfego de IA" active={config.traffic} onToggle={() => handleToggle('traffic')} readOnly={readOnly} />

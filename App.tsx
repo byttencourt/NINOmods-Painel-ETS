@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Play, Square, RotateCcw, CloudCheck, CloudOff, Globe } from 'lucide-react';
+import { Play, Square, RotateCcw, CloudCheck, CloudOff, Globe, User } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import ConfigPanel from './components/ConfigPanel';
 import LogConsole from './components/LogConsole';
@@ -51,6 +51,12 @@ const INITIAL_STATS: ServerStats = {
   history: []
 };
 
+const INITIAL_AUTOMATION: AutomationSettings = {
+  autoStartOnBoot: false,
+  dailyRestart: false,
+  restartHour: "04:00"
+};
+
 const App: React.FC = () => {
   const [session, setSession] = useState<UserSession | null>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
@@ -58,6 +64,7 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'config' | 'logs' | 'automation' | 'bans'>('dashboard');
   const [status, setStatus] = useState<ServerStatus>(ServerStatus.OFFLINE);
   const [config, setConfig] = useState<ServerConfig>(INITIAL_CONFIG);
+  const [automation, setAutomation] = useState<AutomationSettings>(INITIAL_AUTOMATION);
   const [stats, setStats] = useState<ServerStats>(INITIAL_STATS);
   const [logs, setLogs] = useState<string[]>(["[SYSTEM] Painel NINOmods iniciado."]);
 
@@ -80,10 +87,14 @@ const App: React.FC = () => {
   const loadRealData = async () => {
     setIsSyncing(true);
     try {
-      const realData = await api.fetchConfig();
+      const [realData, automationData] = await Promise.all([
+        api.fetchConfig(),
+        api.fetchAutomation()
+      ]);
       setConfig(prev => ({ ...prev, ...realData }));
+      setAutomation(automationData);
       await refreshStats();
-      addLog(`Sucesso: Conectado ao host ${window.location.hostname}`);
+      addLog(`Sucesso: Debian 13 sincronizado.`);
     } catch (err: any) {
       addLog(`Aviso de Sincronia: ${err.message}`);
     } finally {
@@ -147,20 +158,32 @@ const App: React.FC = () => {
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-950 text-slate-200">
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} userRole={session.role} />
+      <Sidebar 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab} 
+        onLogout={handleLogout} 
+        userRole={session.role} 
+        username={session.username} 
+      />
       
       <main className="flex-1 overflow-y-auto relative">
         <header className="sticky top-0 z-20 flex items-center justify-between px-8 py-4 bg-slate-900/80 backdrop-blur-md border-b border-slate-800">
-          <div className="flex items-center gap-4">
-            <img src="https://i.postimg.cc/kgP2578h/nino_logop.png" alt="Logo" className="h-8 w-auto" />
-            <div>
-              <h1 className="text-xl font-bold text-white">NINOmods Manager</h1>
-              <div className="flex items-center gap-2 mt-0.5">
-                <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Debian 13</p>
+          <div className="flex items-center gap-6">
+            <img src="https://i.postimg.cc/kgP2578h/nino_logop.png" alt="Logo" className="h-10 w-auto" />
+            <div className="flex flex-col">
+              <div className="flex items-center gap-3">
+                <h1 className="text-xl font-black text-white tracking-tight">NINOmods Manager</h1>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-800 border border-slate-700 rounded-lg">
+                  <User size={12} className="text-blue-400" />
+                  <span className="text-[11px] font-bold text-slate-200">{session.username}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 mt-1">
+                <p className="text-[9px] text-slate-500 uppercase tracking-widest font-black">Debian 13 Environment</p>
                 <div className="w-1 h-1 rounded-full bg-slate-700"></div>
                 <span className={`text-[9px] flex items-center gap-1 font-bold ${isSyncing ? 'text-blue-400' : 'text-green-500'}`}>
                    {isSyncing ? <div className="w-2 h-2 border border-blue-400 border-t-transparent rounded-full animate-spin"></div> : <CloudCheck size={10} />}
-                   {isSyncing ? 'Sincronizando...' : 'SII Sincronizado'}
+                   {isSyncing ? 'Sincronizando...' : 'Sistema Sincronizado'}
                 </span>
               </div>
             </div>
@@ -185,7 +208,7 @@ const App: React.FC = () => {
           {activeTab === 'config' && <ConfigPanel config={config} setConfig={setConfig} readOnly={session.role !== 'SUPERADMIN'} />}
           {activeTab === 'bans' && <BanningPanel userRole={session.role} onLogAction={addLog} />}
           {activeTab === 'logs' && <LogConsole logs={logs} />}
-          {activeTab === 'automation' && <AutomationPanel automation={{autoStartOnBoot: true, dailyRestart: true, restartHour: "04:00"}} setAutomation={() => {}} readOnly={session.role !== 'SUPERADMIN'} />}
+          {activeTab === 'automation' && <AutomationPanel automation={automation} setAutomation={setAutomation} readOnly={session.role !== 'SUPERADMIN'} />}
         </div>
       </main>
     </div>
